@@ -7,38 +7,15 @@ steps:
       echo "##vso[build.updatebuildnumber]$BUILD_NUMBER"
     displayName: 'set run name'
 
-  - script: yarn install
-    displayName: 'yarn install'
-
-  - script: yarn update-schema
-    displayName: 'yarn update schema'
-
-  - script: sudo yarn relay --watchman=false
-    displayName: 'compile relay'
-
   - script: yarn build
     displayName: 'yarn build'
-
-  - script: yarn test --ci  --all --watchAll=false --coverage --coverageReporters=cobertura
-    displayName: 'Unit Tests'
-
-  - task: PublishCodeCoverageResults@1
-    inputs:
-      codeCoverageTool: Cobertura
-      summaryFileLocation: $(System.DefaultWorkingDirectory)/coverage/cobertura-coverage.xml
 
   - task: CopyFiles@2
     displayName: Stage Files
     inputs:
       Contents: |
-        build/**/*
         node_modules/**/*
-        knexfile.js
-        schema.graphql
-        migrations/**/*
-        db-utils/**/*
         .ebextensions/**/*
-        build-migrations/**/*
       TargetFolder: '$(Build.ArtifactStagingDirectory)'
       CleanTargetFolder: true
 

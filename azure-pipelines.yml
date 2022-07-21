@@ -1,6 +1,6 @@
 name: $(Build.SourceBranchName).$(Date:yyyyMMdd).$(Rev:r)
 trigger:
-  - develop
+  - main
 
 stages:
   - stage: Build
@@ -32,28 +32,6 @@ stages:
                 - template: .azurepipelines/deployment-template.yaml
                   parameters:
                     environmentName: ci
-                    migrateDbEndpoint: https://dev.forecastable.io/v1/manage/migrateDb
-                    migrateDbToken: $(CI_MIGRATE_DB_TOKEN)
-
-  - stage: QA_Deploy
-    displayName: Deploy to QA
-    jobs:
-      - deployment: DeployWebApp
-        displayName:
-
-        pool:
-          vmImage: 'ubuntu-latest'
-
-        environment: QA
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - template: .azurepipelines/deployment-template.yaml
-                  parameters:
-                    environmentName: qa
-                    migrateDbEndpoint: https://qa.forecastable.io/v1/manage/migrateDb
-                    migrateDbToken: $(QA_MIGRATE_DB_TOKEN)
 
   - stage: PROD_Deploy
     displayName: Deploy to Production
@@ -72,5 +50,3 @@ stages:
                 - template: .azurepipelines/deployment-template.yaml
                   parameters:
                     environmentName: prod
-                    migrateDbEndpoint: https://app.forecastable.com/v1/manage/migrateDb
-                    migrateDbToken: $(PROD_MIGRATE_DB_TOKEN)
