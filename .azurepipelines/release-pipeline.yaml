@@ -1,0 +1,31 @@
+name: Release-$(Build.SourceBranchName).$(Date:yyyyMMdd).$(Rev:r)
+
+trigger:
+  - release-*
+
+pr: none
+
+stages:
+  - stage: Build
+    displayName: Build Stage
+    jobs:
+      - job: Build
+        displayName: Build
+
+        pool:
+          vmImage: 'ubuntu-latest'
+
+        steps:
+          - template: templates/build-template.yaml
+
+  - template: templates/deployment-template.yaml
+    parameters:
+      environmentName: qa
+      migrateDbEndpoint: https://qa.forecastable.io/v1/manage/migrateDb
+      migrateDbToken: $(QA_MIGRATE_DB_TOKEN)
+
+  - template: templates/deployment-template.yaml
+    parameters:
+      environmentName: prod
+      migrateDbEndpoint: https://app.forecastable.com/v1/manage/migrateDb
+      migrateDbToken: $(PROD_MIGRATE_DB_TOKEN)

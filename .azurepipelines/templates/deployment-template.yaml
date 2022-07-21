@@ -1,0 +1,78 @@
+parameters:
+  environmentName: ''
+  region: us-east-1
+  stagingBucketName: 'ado-forecastable-web-app-staging'
+  migrateDbEndpoint: ''
+  migrateDbToken: ''
+
+stages:
+  - stage: App_Deploy_${{ parameters.environmentName }}
+    displayName: Deploy App to ${{ parameters.environmentName }}
+    jobs:
+      - deployment: DeployWebApp
+        displayName: Deploy Web App
+
+        pool:
+          vmImage: 'ubuntu-latest'
+
+        environment: ${{ parameters.environmentName }}
+
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: forecastableweb
+
+                - task: S3Upload@1
+                  displayName: Stage ${{ parameters.environmentName }} Artifacts in S3
+                  inputs:
+                    awsCredentials: 'ado-pipelines-service-account'
+                    regionName: ${{parameters.region}}
+                    bucketName: ${{parameters.stagingBucketName}}
+                    sourceFolder: $(Pipeline.Workspace)/forecastableweb
+                    globExpressions: '**'
+                    targetFolder: "${{ format('forecastable-web-{0}-{1}', parameters.environmentName, '$(Build.BuildNumber)') }}"
+
+                - task: BeanstalkDeployApplication@1
+                  displayName: Deploy Web App to EB
+                  inputs:
+                    awsCredentials: 'ado-pipelines-service-account'
+                    regionName: ${{parameters.region}}
+                    applicationName: 'forecastable-web-app'
+                    environmentName: "${{ format('forecastable-{0}-web-app', parameters.environmentName) }}"
+                    applicationType: 's3'
+                    deploymentBundleBucket: ${{parameters.stagingBucketName}}
+                    deploymentBundleKey: "${{ format('forecastable-web-{0}-{1}/{2}.zip', parameters.environmentName, '$(Build.BuildNumber)', '$(Build.BuildId)') }}"
+                    logRequest: true
+                    logResponse: true
+
+  - stage: Database_Deploy_${{ parameters.environmentName }}
+    displayName: Deploy Database to ${{ parameters.environmentName }}
+    jobs:
+      - job: DeployDatabase
+        displayName: Deploy Database
+
+        pool:
+          vmImage: 'ubuntu-latest'
+
+        steps:
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              script: |
+                $url3 = "${{parameters.migrateDbEndpoint}}";
+
+                $contentType3 = "application/json"
+
+                $data = @{
+                    token = "${{parameters.migrateDbToken}}";
+                };
+                $json = $data | ConvertTo-Json;
+                try {
+                  $result = Invoke-RestMethod -Method PUT -Uri $url3 -ContentType $contentType3 -Body $json;
+                  Write-Host $result;
+                } catch {
+                  Write-Error -Exception $_.Exception -Message "Failed to migrate DB."
+                  throw
+                }

@@ -1,0 +1,25 @@
+name: $(Build.SourceBranchName).$(Date:yyyyMMdd).$(Rev:r)
+
+trigger:
+  - develop
+
+pr: none
+
+stages:
+  - stage: Build
+    displayName: Build Stage
+    jobs:
+      - job: Build
+        displayName: Build
+
+        pool:
+          vmImage: 'ubuntu-latest'
+
+        steps:
+          - template: templates/build-template.yaml
+
+  - template: templates/deployment-template.yaml
+    parameters:
+      environmentName: ci
+      migrateDbEndpoint: https://dev.forecastable.io/v1/manage/migrateDb
+      migrateDbToken: $(CI_MIGRATE_DB_TOKEN)

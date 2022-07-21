@@ -1,0 +1,20 @@
+name: PR-$(Build.SourceBranchName).$(Date:yyyyMMdd).$(Rev:r)
+
+trigger: none
+
+pr:
+  - develop
+  - master
+
+stages:
+  - stage: Build
+    displayName: Build stage
+    jobs:
+      - job: Build
+        displayName: Build
+
+        pool:
+          vmImage: 'ubuntu-latest'
+
+        steps:
+          - template: templates/build-template.yaml

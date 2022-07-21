@@ -1,0 +1,55 @@
+steps:
+  - script: |
+      COMMIT=$BUILD_SOURCEVERSION
+      SHORTHASH=${COMMIT:0:7}
+      OLD_RUN_NUMBER=$BUILD_BUILDNUMBER
+      BUILD_NUMBER="$SHORTHASH.$OLD_RUN_NUMBER"
+      echo "##vso[build.updatebuildnumber]$BUILD_NUMBER"
+    displayName: 'set run name'
+
+  - script: yarn install
+    displayName: 'yarn install'
+
+  - script: yarn update-schema
+    displayName: 'yarn update schema'
+
+  - script: sudo yarn relay --watchman=false
+    displayName: 'compile relay'
+
+  - script: yarn build
+    displayName: 'yarn build'
+
+  - script: yarn test --ci  --all --watchAll=false --coverage --coverageReporters=cobertura
+    displayName: 'Unit Tests'
+
+  - task: PublishCodeCoverageResults@1
+    inputs:
+      codeCoverageTool: Cobertura
+      summaryFileLocation: $(System.DefaultWorkingDirectory)/coverage/cobertura-coverage.xml
+
+  - task: CopyFiles@2
+    displayName: Stage Files
+    inputs:
+      Contents: |
+        build/**/*
+        node_modules/**/*
+        knexfile.js
+        schema.graphql
+        migrations/**/*
+        db-utils/**/*
+        .ebextensions/**/*
+        build-migrations/**/*
+      TargetFolder: '$(Build.ArtifactStagingDirectory)'
+      CleanTargetFolder: true
+
+  - task: ArchiveFiles@2
+    displayName: Publish Web Artifacts
+    inputs:
+      rootFolderOrFile: '$(Build.ArtifactStagingDirectory)'
+      includeRootFolder: false
+      archiveType: 'zip'
+      archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+      replaceExistingArchive: true
+
+  - publish: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+    artifact: forecastableweb

@@ -1,0 +1,76 @@
+name: $(Build.SourceBranchName).$(Date:yyyyMMdd).$(Rev:r)
+trigger:
+  - develop
+
+stages:
+  - stage: Build
+    displayName: Build stage
+    jobs:
+      - job: Build
+        displayName: Build
+
+        pool:
+          vmImage: 'ubuntu-latest'
+
+        steps:
+          - template: .azurepipelines/build-template.yaml
+
+  - stage: CI_Deploy
+    displayName: Deploy to CI
+    jobs:
+      - deployment: DeployWebApp
+        displayName: Deploy Web App
+
+        pool:
+          vmImage: 'ubuntu-latest'
+
+        environment: ci
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: .azurepipelines/deployment-template.yaml
+                  parameters:
+                    environmentName: ci
+                    migrateDbEndpoint: https://dev.forecastable.io/v1/manage/migrateDb
+                    migrateDbToken: $(CI_MIGRATE_DB_TOKEN)
+
+  - stage: QA_Deploy
+    displayName: Deploy to QA
+    jobs:
+      - deployment: DeployWebApp
+        displayName:
+
+        pool:
+          vmImage: 'ubuntu-latest'
+
+        environment: QA
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: .azurepipelines/deployment-template.yaml
+                  parameters:
+                    environmentName: qa
+                    migrateDbEndpoint: https://qa.forecastable.io/v1/manage/migrateDb
+                    migrateDbToken: $(QA_MIGRATE_DB_TOKEN)
+
+  - stage: PROD_Deploy
+    displayName: Deploy to Production
+    jobs:
+      - deployment: DeployWebApp
+        displayName:
+
+        pool:
+          vmImage: 'ubuntu-latest'
+
+        environment: PROD
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: .azurepipelines/deployment-template.yaml
+                  parameters:
+                    environmentName: prod
+                    migrateDbEndpoint: https://app.forecastable.com/v1/manage/migrateDb
+                    migrateDbToken: $(PROD_MIGRATE_DB_TOKEN)
