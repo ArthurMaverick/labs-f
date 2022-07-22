@@ -13,7 +13,7 @@ stages:
           vmImage: 'ubuntu-latest'
 
         steps:
-          - template: .azurepipelines/build-template.yaml
+          - template: .azurepipelines/templates/build-template.yaml
 
   - stage: CI_Deploy
     displayName: Deploy to CI
@@ -29,7 +29,7 @@ stages:
           runOnce:
             deploy:
               steps:
-                - template: .azurepipelines/deployment-template.yaml
+                - template: .azurepipelines/templates/deployment-template.yaml
                   parameters:
                     environmentName: ci
 
