@@ -53,7 +53,7 @@ stages:
             artifact: forecastableweb
           
           - download: current
-              artifact: forecastableweb
+            artifact: forecastableweb
           
           - task: S3Upload@1
             displayName: Stage prod Artifacts in S3
