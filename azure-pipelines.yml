@@ -2,7 +2,7 @@ name: $(Build.SourceBranchName).$(Date:yyyyMMdd).$(Rev:r)
 # trigger:
 #   - main
   trigger:  
-    batch: true
+    - batch: true
 
 stages:
   - stage: Build
