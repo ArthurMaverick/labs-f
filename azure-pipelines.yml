@@ -64,35 +64,30 @@ stages:
         strategy:
           runOnce:
             deploy:
-              parameters:
-                environmentName: 'prod'
-                region: us-east-1
-                stagingBucketName: 'forecastable-web-app-staging'
-
               steps:
                 - download: current
                   artifact: forecastableweb
 
                 - task: S3Upload@1
-                  displayName: Stage ${{ parameters.environmentName }} Artifacts in S3
+                  displayName: Stage prod Artifacts in S3
                   inputs:
                     awsCredentials: 'beanstalk'
                     regionName: ${{parameters.region}}
-                    bucketName: ${{parameters.stagingBucketName}}
+                    bucketName: 'forecastable-web-app-staging'
                     sourceFolder: $(Pipeline.Workspace)/forecastableweb
                     globExpressions: '**'
-                    targetFolder: "${{ format('forecastable-web-{0}-{1}', parameters.environmentName, '$(Build.BuildNumber)') }}"
+                    targetFolder: "${{ format('forecastable-web-{0}-{1}', prod, '$(Build.BuildNumber)') }}"
 
                 - task: BeanstalkDeployApplication@1
                   displayName: Deploy Web App to EB
                   inputs:
                     awsCredentials: 'beanstalk'
-                    regionName: ${{parameters.region}}
+                    regionName: us-east-1
                     applicationName: 'forecastable-web-app'
-                    environmentName: "${{ format('forecastable-{0}-web-app', parameters.environmentName) }}"
+                    environmentName: "${{ format('forecastable-{0}-web-app', prod) }}"
                     applicationType: 's3'
-                    deploymentBundleBucket: ${{parameters.stagingBucketName}}
-                    deploymentBundleKey: "${{ format('forecastable-web-{0}-{1}/{2}.zip', parameters.environmentName, '$(Build.BuildNumber)', '$(Build.BuildId)') }}"
+                    deploymentBundleBucket: 'forecastable-web-app-staging'
+                    deploymentBundleKey: "${{ format('forecastable-web-{0}-{1}/{2}.zip', prod, '$(Build.BuildNumber)', '$(Build.BuildId)') }}"
                     logRequest: true
                     logResponse: true
               # steps:
