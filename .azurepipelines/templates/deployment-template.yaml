@@ -10,7 +10,7 @@ steps:
   - task: S3Upload@1
     displayName: Stage ${{ parameters.environmentName }} Artifacts in S3
     inputs:
-      awsCredentials: 'ado-pipelines-service-account'
+      awsCredentials: 'beanstalk'
       regionName: ${{parameters.region}}
       bucketName: ${{parameters.stagingBucketName}}
       sourceFolder: $(Pipeline.Workspace)/forecastableweb
@@ -20,7 +20,7 @@ steps:
   - task: BeanstalkDeployApplication@1
     displayName: Deploy Web App to EB
     inputs:
-      awsCredentials: 'ado-pipelines-service-account'
+      awsCredentials: 'beanstalk'
       regionName: ${{parameters.region}}
       applicationName: 'forecastable-web-app'
       environmentName: "${{ format('forecastable-{0}-web-app', parameters.environmentName) }}"
