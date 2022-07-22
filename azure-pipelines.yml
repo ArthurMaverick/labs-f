@@ -51,47 +51,75 @@ stages:
 
           - publish: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
             artifact: forecastableweb
+          
+          - download: current
+              artifact: forecastableweb
+          
+          - task: S3Upload@1
+            displayName: Stage prod Artifacts in S3
+            inputs:
+              awsCredentials: 'beanstalk'
+              regionName: us-us-east-1
+              bucketName: 'forecastable-web-app-staging'
+              sourceFolder: $(Pipeline.Workspace)/forecastableweb
+              globExpressions: '**'
+              # targetFolder: "${{ format('forecastable-web-{0}-{1}', prod, '$(Build.BuildNumber)') }}"
+              targetFolder: 'forecastable-web-prod-$(Build.BuildNumber)'
+              
+          - task: BeanstalkDeployApplication@1
+            displayName: Deploy Web App to EB
+            inputs:
+              awsCredentials: 'beanstalk'
+              regionName: us-east-1
+              applicationName: 'forecastable-web-app'
+              # environmentName: "${{ format('forecastable-{0}-web-app', prod) }}"
+              environmentName: 'prod'
+              applicationType: 's3'
+              deploymentBundleBucket: 'forecastable-web-app-staging'
+              deploymentBundleKey: 'forecastable-web-prod-$(Build.BuildNumber)/$(Build.BuildId).zip'
+              logRequest: true
+              logResponse: true
+        
 
+  # - stage: Deploy
+  #   displayName: Deploy to Production
+  #   jobs:
+  #     - deployment: DeployWebApp
+  #       displayName:
+  #       pool:
+  #         vmImage: 'ubuntu-latest'
+  #       environment: prod
+  #       strategy:
+  #         runOnce:
+  #           deploy:
+  #             steps:
+  #               - download: current
+  #                 artifact: forecastableweb
 
-  - stage: PROD_Deploy
-    displayName: Deploy to Production
-    jobs:
-      - deployment: DeployWebApp
-        displayName:
-        pool:
-          vmImage: 'ubuntu-latest'
-        environment: prod
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - download: current
-                  artifact: forecastableweb
+  #               - task: S3Upload@1
+  #                 displayName: Stage prod Artifacts in S3
+  #                 inputs:
+  #                   awsCredentials: 'beanstalk'
+  #                   regionName: us-us-east-1
+  #                   bucketName: 'forecastable-web-app-staging'
+  #                   sourceFolder: $(Pipeline.Workspace)/forecastableweb
+  #                   globExpressions: '**'
+  #                   # targetFolder: "${{ format('forecastable-web-{0}-{1}', prod, '$(Build.BuildNumber)') }}"
+  #                   targetFolder: 'forecastable-web-prod-$(Build.BuildNumber)'
 
-                - task: S3Upload@1
-                  displayName: Stage prod Artifacts in S3
-                  inputs:
-                    awsCredentials: 'beanstalk'
-                    regionName: us-us-east-1
-                    bucketName: 'forecastable-web-app-staging'
-                    sourceFolder: $(Pipeline.Workspace)/forecastableweb
-                    globExpressions: '**'
-                    # targetFolder: "${{ format('forecastable-web-{0}-{1}', prod, '$(Build.BuildNumber)') }}"
-                    targetFolder: 'forecastable-web-prod-$(Build.BuildNumber)'
-
-                - task: BeanstalkDeployApplication@1
-                  displayName: Deploy Web App to EB
-                  inputs:
-                    awsCredentials: 'beanstalk'
-                    regionName: us-east-1
-                    applicationName: 'forecastable-web-app'
-                    # environmentName: "${{ format('forecastable-{0}-web-app', prod) }}"
-                    environmentName: 'prod'
-                    applicationType: 's3'
-                    deploymentBundleBucket: 'forecastable-web-app-staging'
-                    deploymentBundleKey: 'forecastable-web-prod-$(Build.BuildNumber)/$(Build.BuildId).zip'
-                    logRequest: true
-                    logResponse: true
+  #               - task: BeanstalkDeployApplication@1
+  #                 displayName: Deploy Web App to EB
+  #                 inputs:
+  #                   awsCredentials: 'beanstalk'
+  #                   regionName: us-east-1
+  #                   applicationName: 'forecastable-web-app'
+  #                   # environmentName: "${{ format('forecastable-{0}-web-app', prod) }}"
+  #                   environmentName: 'prod'
+  #                   applicationType: 's3'
+  #                   deploymentBundleBucket: 'forecastable-web-app-staging'
+  #                   deploymentBundleKey: 'forecastable-web-prod-$(Build.BuildNumber)/$(Build.BuildId).zip'
+  #                   logRequest: true
+  #                   logResponse: true
               # steps:
               #   - template: .azurepipelines/templates/deployment-template.yaml
               #     parameters:
