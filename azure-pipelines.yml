@@ -24,7 +24,7 @@ stages:
         pool:
           vmImage: 'ubuntu-latest'
 
-        environment: PROD
+        environment: prod
         strategy:
           runOnce:
             deploy:
