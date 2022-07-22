@@ -1,8 +1,8 @@
 name: $(Build.SourceBranchName).$(Date:yyyyMMdd).$(Rev:r)
-# trigger:
-#   - main
-trigger:  
-  batch: true
+trigger:
+  - main
+# trigger:  
+#   batch: true
 
 stages:
   - stage: Build
@@ -13,23 +13,89 @@ stages:
         pool:
           vmImage: 'ubuntu-latest'
           demands: $(CapabilityName) -equals $(CapabilityValue)
+        # steps:
+        #   - template: .azurepipelines/templates/build-template.yaml
         steps:
-          - template: .azurepipelines/templates/build-template.yaml
+          - script: |
+              COMMIT=$BUILD_SOURCEVERSION
+              SHORTHASH=${COMMIT:0:7}
+              OLD_RUN_NUMBER=$BUILD_BUILDNUMBER
+              BUILD_NUMBER="$SHORTHASH.$OLD_RUN_NUMBER"
+              echo "##vso[build.updatebuildnumber]$BUILD_NUMBER"
+            displayName: 'set run name'
+
+          - script: yarn install
+            displayName: 'yarn install'
+
+          - script: yarn build
+            displayName: 'yarn build'
+
+          - task: CopyFiles@2
+            displayName: Stage Files
+            inputs:
+              Contents: |
+                node_modules/**/*
+                .ebextensions/**/*
+                .next/**/*
+              TargetFolder: '$(Build.ArtifactStagingDirectory)'
+              CleanTargetFolder: true
+
+          - task: ArchiveFiles@2
+            displayName: Publish Web Artifacts
+            inputs:
+              rootFolderOrFile: '$(Build.ArtifactStagingDirectory)'
+              includeRootFolder: false
+              archiveType: 'zip'
+              archiveFile: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+              replaceExistingArchive: true
+
+          - publish: '$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip'
+            artifact: forecastableweb
+
 
   - stage: PROD_Deploy
     displayName: Deploy to Production
     jobs:
       - deployment: DeployWebApp
         displayName:
-
         pool:
           vmImage: 'ubuntu-latest'
-
         environment: prod
         strategy:
           runOnce:
             deploy:
+              parameters:
+                environmentName: 'prod'
+                region: us-east-1
+                stagingBucketName: 'forecastable-web-app-staging'
+
               steps:
-                - template: .azurepipelines/templates/deployment-template.yaml
-                  parameters:
-                    environmentName: prod
+                - download: current
+                  artifact: forecastableweb
+
+                - task: S3Upload@1
+                  displayName: Stage ${{ parameters.environmentName }} Artifacts in S3
+                  inputs:
+                    awsCredentials: 'beanstalk'
+                    regionName: ${{parameters.region}}
+                    bucketName: ${{parameters.stagingBucketName}}
+                    sourceFolder: $(Pipeline.Workspace)/forecastableweb
+                    globExpressions: '**'
+                    targetFolder: "${{ format('forecastable-web-{0}-{1}', parameters.environmentName, '$(Build.BuildNumber)') }}"
+
+                - task: BeanstalkDeployApplication@1
+                  displayName: Deploy Web App to EB
+                  inputs:
+                    awsCredentials: 'beanstalk'
+                    regionName: ${{parameters.region}}
+                    applicationName: 'forecastable-web-app'
+                    environmentName: "${{ format('forecastable-{0}-web-app', parameters.environmentName) }}"
+                    applicationType: 's3'
+                    deploymentBundleBucket: ${{parameters.stagingBucketName}}
+                    deploymentBundleKey: "${{ format('forecastable-web-{0}-{1}/{2}.zip', parameters.environmentName, '$(Build.BuildNumber)', '$(Build.BuildId)') }}"
+                    logRequest: true
+                    logResponse: true
+              # steps:
+              #   - template: .azurepipelines/templates/deployment-template.yaml
+              #     parameters:
+              #       environmentName: prod
