@@ -11,6 +11,7 @@ stages:
 
         pool:
           vmImage: 'ubuntu-latest'
+          demands: {CapabilityName} -equals {CapabilityValue}
 
         steps:
           - template: .azurepipelines/templates/build-template.yaml
